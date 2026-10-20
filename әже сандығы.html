@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Әжемнің сөз сандығы</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome (Иконкалар үшін) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (React JSX кодын браузерде оқу үшін) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #FDFBF7;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const CATEGORIES = {
+            A: { id: 'A', name: 'Үй жиһаздары мен ағаш бұйымдары', color: 'bg-amber-100 text-amber-800' },
+            B: { id: 'B', name: 'Киіз үйдің жабдықтары мен жабындары', color: 'bg-blue-100 text-blue-800' },
+            C: { id: 'C', name: 'Ас әзірлеу мен ыдыс сақтауға қатысты сөздер', color: 'bg-emerald-100 text-emerald-800' },
+            D: { id: 'D', name: 'Тұрмыстық бұйымдар мен материалдарға қатысты сөздер', color: 'bg-rose-100 text-rose-800' }
+        };
+
+        const WORDS_DATA = [
+            // А санаты
+            { id: 1, word: 'Кебеже', category: 'A', definition: 'Азық-түлік, ұн, дән және басқа тұрмыстық заттарды сақтауға арналған ағаш бұйым.', example: 'Әжем кебежеден құрт-ірімшік алып берді.', icon: '🧰' },
+            { id: 2, word: 'Асадал', category: 'A', definition: 'Ыдыс-аяқ пен асқа қажетті заттарды сақтауға арналған дәстүрлі ағаш жиһаз.', example: 'Асадалдың сөрелерінде оюлы ағаш ыдыстар тұр.', icon: '🗄️' },
+            { id: 3, word: 'Жүкаяқ', category: 'A', definition: 'Жүк, көрпе-төсек пен сандық қоюға арналған аласа ағаш тұғыр.', example: 'Жүкаяқтың үстіне жиналған көрпелер үйге көрік беріп тұр.', icon: '🛏️' },
+            { id: 4, word: 'Адалбақан', category: 'A', definition: 'Киім және басқа заттарды ілуге арналған ағаш тіреуіш.', example: 'Атасы шапанын адалбақанға ілді.', icon: '🧥' },
+            { id: 5, word: 'Жозы', category: 'A', definition: 'Кейбір өңірлерде қолданылған аласа үстелдің атауы. Өңірлік мағынасы нақтылауды қажет етеді.', example: 'Қонақтар жозының басына жайғасты.', icon: '🪑' },
+            
+            // Ә санаты
+            { id: 6, word: 'Үзік', category: 'B', definition: 'Киіз үйдің кереге мен шаңырақ арасындағы бөлігін жабатын киіз.', example: 'Жаңбыр жауғанда үзікті жақсылап тарттық.', icon: '⛺' },
+            { id: 7, word: 'Туырлық', category: 'B', definition: 'Киіз үйдің керегесін сыртынан жабатын киіз.', example: 'Ақ туырлықты киіз үй далада алыстан көрінеді.', icon: '🛖' },
+            { id: 8, word: 'Түндік', category: 'B', definition: 'Шаңырақтың үстін жабатын киіз жабын.', example: 'Таңертең әжем түндікті ашып, үйге жарық кіргізді.', icon: '🌅' },
+            { id: 9, word: 'Басқұр', category: 'B', definition: 'Киіз үйді бекітуге және сәндеуге қолданылатын тоқылған жалпақ бау.', example: 'Оюлы басқұр киіз үйдің ішін ерекше безендіріп тұр.', icon: '🎗️' },
+            { id: 10, word: 'Баулары', category: 'B', definition: 'Киіз үйдің бөліктерін байлауға, бекітуге арналған баулардың жалпы атауы.', example: 'Уық пен керегені мықты баулармен байлады.', icon: '🧶' },
+            { id: 11, word: 'Тұскиіз', category: 'B', definition: 'Үй ішін сәндеуге арналған кестелі немесе өрнекті қабырға бұйымы.', example: 'Қабырғадағы тұскиіздегі оюлар көз жауын алады.', icon: '🖼️' },
+            { id: 12, word: 'Шымылдық', category: 'B', definition: 'Төсек орнын немесе үй ішіндегі кеңістікті бөліп тұратын перде.', example: 'Қалыңдықтың алдына ақ шымылдық құрылды.', icon: '🪟' },
+            { id: 13, word: 'Киіз есік', category: 'B', definition: 'Киіз үйдің кіреберісін жабатын киіз жабын.', example: 'Жел соққанда киіз есікті мықтап жапты.', icon: '🚪' },
+            { id: 14, word: 'Уықбау', category: 'B', definition: 'Киіз үйдің уықтарына қатысты қолданылатын бау атауы; нақты қызметін анықтау қажет.', example: 'Уықбау үзіліп қалмас үшін мықты жіптен өріледі.', icon: '🪢' },
+
+            // Б санаты
+            { id: 15, word: 'Саба', category: 'C', definition: 'Қымыз ашытып, сақтауға арналған үлкен тері ыдыс.', example: 'Сабадағы қымыздың иісі мұрын жарады.', icon: '🏺' },
+            { id: 16, word: 'Мес', category: 'C', definition: 'Сұйық тағамдарды, соның ішінде қымызды сақтауға немесе тасымалдауға арналған тері ыдыс.', example: 'Атпен жолға шыққанда қанжығаға мес байлады.', icon: '🍶' },
+            { id: 17, word: 'Көнек', category: 'C', definition: 'Сүт саууға пайдаланылған тері ыдыс.', example: 'Бие сауғанда жеңгем көнекті пайдаланды.', icon: '🪣' },
+            { id: 18, word: 'Күбі', category: 'C', definition: 'Қымыз, айран пісуге және сүт өнімдерін өңдеуге арналған ағаш ыдыс.', example: 'Әжем күбі пісіп, дәмді сарымай алды.', icon: '🪵' },
+            { id: 19, word: 'Тегене', category: 'C', definition: 'Қымыз құюға арналған үлкен, көбіне ағаштан жасалған ыдыс.', example: 'Қонақтарға тегенемен қымыз тартылды.', icon: '🥣' },
+            { id: 20, word: 'Саптыаяқ', category: 'C', definition: 'Сабы бар дәстүрлі ішетін ыдыс.', example: 'Атам саптыаяқпен салқын айран ішті.', icon: '☕' },
+            { id: 21, word: 'Астау', category: 'C', definition: 'Ет салуға және қамыр илеу сияқты тұрмыстық жұмыстарға пайдаланылған ағаш ыдыс.', example: 'Буы бұрқыраған ет үлкен астаумен әкелінді.', icon: '🍲' },
+            { id: 22, word: 'Келі', category: 'C', definition: 'Дәнді дақылдарды түюге арналған ойықты ағаш немесе тас бұйым.', example: 'Тарыны келіге салып түйдік.', icon: '🪵' },
+            { id: 23, word: 'Келсап', category: 'C', definition: 'Келінің ішіндегі дәнді түюге арналған ұзынша құрал.', example: 'Келсапты екі қолмен ұстап, ырғақпен ұрды.', icon: '🦯' },
+            { id: 24, word: 'Қауға', category: 'C', definition: 'Құдықтан су тартуға арналған шелек тәрізді ыдыс.', example: 'Шөлдеген малға қауғамен су тартты.', icon: '🪣' },
+            { id: 25, word: 'Шөміш', category: 'C', definition: 'Су немесе тағам алуға арналған шағын ыдыс-құрал.', example: 'Қазандағы сорпаны ағаш шөмішпен сапырды.', icon: '🥄' },
+
+            // В санаты
+            { id: 26, word: 'Тулақ', category: 'D', definition: 'Жүн сабауға төселетін, тұрмыста төсеніш ретінде де қолданылатын өңделген тері.', example: 'Әйелдер тулаққа жүн жайып, сабаумен сабады.', icon: '🐄' },
+            { id: 27, word: 'Шидем', category: 'D', definition: 'Қалың жүн матадан тігілген жылы сырт киім.', example: 'Қыстың аязында шидем шекпен тоңдырмайды.', icon: '🧥' },
+            { id: 28, word: 'Күпі', category: 'D', definition: 'Арасына жүн салынып тігілетін жылы сырт киім.', example: 'Ауылдың балалары үстіне күпі киіп шана тепті.', icon: '🧥' },
+            { id: 29, word: 'Шекпен', category: 'D', definition: 'Жүннен, соның ішінде түйе жүнінен тоқылған сырт киім.', example: 'Атақты билер мен байлар түйе жүн шекпен киген.', icon: '🐪' },
+            { id: 30, word: 'Кебіс', category: 'D', definition: 'Мәсінің сыртынан киілетін былғары аяқ киім.', example: 'Үйге кірерде кебісін босағаға шешіп қалдырды.', icon: '👞' },
+            { id: 31, word: 'Мәсі', category: 'D', definition: 'Жұмсақ былғарыдан тігілетін аяқ киім.', example: 'Намаз оқитын қариялар көбіне мәсі киеді.', icon: '🧦' },
+            { id: 32, word: 'Ұршық', category: 'D', definition: 'Жүн иіруге арналған құрал.', example: 'Әжем қолына ұршығын алып, жіп иіре бастады.', icon: '🧶' },
+            { id: 33, word: 'Өрмек', category: 'D', definition: 'Жіптен мата, алаша және бау тоқуға арналған қарапайым құрал.', example: 'Аулада өрмек құрылып, алаша тоқылып жатыр.', icon: '🧵' },
+            { id: 34, word: 'Ши', category: 'D', definition: 'Киіз үйде қолданылған, төсеніш пен тұрмыстық бұйым жасауға пайдаланылатын өсімдік.', example: 'Шиден тоқылған шымши киіз үйге ерекше көрік береді.', icon: '🌾' },
+            { id: 35, word: 'Көн', category: 'D', definition: 'Теріні өңдеу арқылы алынатын, түрлі бұйым жасауға қолданылған материал.', example: 'Көннен жасалған ер-тұрман өте мықты болады.', icon: '🐎' },
+            { id: 36, word: 'Шарық', category: 'D', definition: 'Дәстүрлі қолөнер мен тұрмыс контексінде аяқ киімге қатысты кездесетін атау; мағынасын нақтылау қажет.', example: 'Ертеде кедей адамдар аяғына шарық байлап киген.', icon: '🥾' }
+        ];
+
+        const generateId = () => Math.random().toString(36).substring(2, 9);
+        const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+
+        // Toast хабарлама компоненті
+        const Toast = ({ message, type = 'info', onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [message, onClose]);
+
+            const bg = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-emerald-500' : 'bg-cyan-600';
+            const icon = type === 'error' ? 'fa-times-circle' : type === 'success' ? 'fa-check-circle' : 'fa-info-circle';
+            
+            return (
+                <div className={`fixed bottom-4 right-4 ${bg} text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center space-x-3 animate-fade-in-up`}>
+                    <i className={`fas ${icon} text-lg`}></i>
+                    <span className="font-medium">{message}</span>
+                </div>
+            );
+        };
+
+        const WordCard = ({ word, onShowToast, isFavorite, toggleFavorite }) => {
+            const [expanded, setExpanded] = useState(false);
+
+            const speak = () => {
+                if (!('speechSynthesis' in window)) {
+                    onShowToast("Кешіріңіз, құрылғыңыз дыбыстауды қолдамайды.", 'error');
+                    return;
+                }
+                const utterance = new SpeechSynthesisUtterance(word.word);
+                utterance.lang = 'kk-KZ';
+                
+                utterance.onerror = (e) => {
+                    console.warn('TTS error:', e);
+                    onShowToast("Дыбыстау барысында қате шықты. Мүмкін браузер қазақ тілін қолдамайды.", 'error');
+                };
+                
+                window.speechSynthesis.speak(utterance);
+                onShowToast(`«${word.word}» сөзі дыбысталуда...`, 'success');
+            };
+
+            return (
+                <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-5 hover:shadow-lg transition-all duration-300 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="text-4xl">{word.icon}</div>
+                        <button onClick={() => toggleFavorite(word.id)} className="p-2 rounded-full hover:bg-amber-50 transition-colors">
+                            <i className={`fa-heart text-xl ${isFavorite ? "fas text-rose-500" : "far text-slate-400"}`}></i>
+                        </button>
+                    </div>
+                    <h3 className="text-xl font-bold text-cyan-900 mb-2">{word.word}</h3>
+                    <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full mb-3 w-max ${CATEGORIES[word.category].color}`}>
+                        {CATEGORIES[word.category].name}
+                    </span>
+                    <p className="text-slate-600 text-sm mb-4 flex-grow">{word.definition}</p>
+                    
+                    {expanded && (
+                        <div className="mb-4 p-4 bg-amber-50 rounded-lg text-sm text-amber-900 border border-amber-100 animate-fade-in">
+                            <p className="font-semibold mb-1">Мысал:</p>
+                            <p className="italic">«{word.example}»</p>
+                            <div className="mt-3 flex items-center text-cyan-800 text-xs font-semibold">
+                                <i className="fas fa-info-circle mr-1"></i>
+                                Әжем айтып берсін: Бұрынғы тұрмыста күнделікті қолданыста болған.
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2 mt-auto pt-4 border-t border-slate-100">
+                        <button onClick={speak} className="flex items-center justify-center bg-cyan-50 hover:bg-cyan-100 text-cyan-700 px-4 py-2 rounded-lg font-medium transition-colors flex-1 text-sm">
+                            <i className="fas fa-volume-up mr-2"></i> Тыңдау
+                        </button>
+                        <button onClick={() => setExpanded(!expanded)} className="flex items-center justify-center bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-2 rounded-lg font-medium transition-colors flex-1 text-sm">
+                            {expanded ? 'Жасыру' : 'Толығырақ'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const HomePage = ({ navigate, totalWords }) => (
+            <div className="space-y-12 pb-12 animate-fade-in">
+                <div className="relative bg-gradient-to-br from-cyan-900 to-cyan-800 rounded-3xl p-8 md:p-12 overflow-hidden shadow-xl text-center md:text-left flex flex-col md:flex-row items-center">
+                    <div className="absolute top-0 right-0 w-64 h-64 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 10%, transparent 10%)', backgroundSize: '20px 20px' }}></div>
+                    
+                    <div className="md:w-1/2 z-10 space-y-6">
+                        <span className="inline-block px-4 py-1.5 bg-amber-500/20 text-amber-300 font-bold tracking-wider rounded-full text-sm uppercase border border-amber-500/30">
+                            Ұмыт болған сөздер — ұлттың асыл мұрасы
+                        </span>
+                        <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight">
+                            Әжемнің <span className="text-amber-400">сөз сандығы</span>
+                        </h1>
+                        <p className="text-cyan-100 text-lg md:text-xl max-w-lg leading-relaxed">
+                            Қазақ халқының тұрмысында қолданылған көне сөздерді зерттеп, жасанды интеллект көмегімен танып біліңіз.
+                        </p>
+                        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+                            <button onClick={() => navigate('dictionary')} className="bg-amber-500 hover:bg-amber-400 text-cyan-950 font-bold px-8 py-4 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 flex items-center justify-center">
+                                <i className="fas fa-book-open mr-2"></i> Сандықты ашу
+                            </button>
+                            <button onClick={() => navigate('games')} className="bg-cyan-700/50 hover:bg-cyan-600/50 border border-cyan-500 text-white font-semibold px-8 py-4 rounded-xl backdrop-blur-sm transition-colors flex items-center justify-center">
+                                <i className="fas fa-gamepad mr-2"></i> Ойын ойнау
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="md:w-1/2 mt-12 md:mt-0 flex justify-center z-10">
+                        <div className="relative w-64 h-64 md:w-80 md:h-80 drop-shadow-2xl">
+                            <svg viewBox="0 0 200 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M20 90 L180 90 L190 180 L10 180 Z" fill="#8B4513" />
+                                <path d="M20 90 L180 90 L160 30 L40 30 Z" fill="#A0522D" />
+                                <path d="M70 120 Q100 90 130 120 Q100 150 70 120 Z" fill="#F5DEB3" opacity="0.8"/>
+                                <path d="M85 120 Q100 105 115 120 Q100 135 85 120 Z" fill="#8B4513"/>
+                                <rect x="90" y="80" width="20" height="20" fill="#DAA520" rx="2" />
+                                <rect x="15" y="85" width="10" height="95" fill="#DAA520" />
+                                <rect x="175" y="85" width="10" height="95" fill="#DAA520" />
+                                <line x1="20" y1="90" x2="180" y2="90" stroke="#5C3317" strokeWidth="4" />
+                            </svg>
+                            <div className="absolute -bottom-4 -right-4 bg-white px-4 py-2 rounded-xl shadow-lg border border-amber-100 font-bold text-cyan-900 flex items-center">
+                                <span className="text-2xl mr-2">📚</span> {totalWords} сөз
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div onClick={() => navigate('dictionary')} className="cursor-pointer group bg-white p-6 rounded-2xl shadow-sm hover:shadow-md border border-slate-100 transition-all">
+                        <div className="bg-cyan-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i className="fas fa-book-open text-cyan-600 text-xl"></i>
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Сөздікке саяхат</h3>
+                        <p className="text-slate-600">Көне сөздердің мағынасын оқып, дыбысталуын тыңдаңыз.</p>
+                    </div>
+                    
+                    <div onClick={() => navigate('ai')} className="cursor-pointer group bg-white p-6 rounded-2xl shadow-sm hover:shadow-md border border-slate-100 transition-all">
+                        <div className="bg-amber-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i className="fas fa-robot text-amber-600 text-xl"></i>
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">ЖИ Көмекші</h3>
+                        <p className="text-slate-600">Сөз зерттеушісіне сұрақ қойып, толыққанды жауап алыңыз.</p>
+                    </div>
+                    
+                    <div onClick={() => navigate('research')} className="cursor-pointer group bg-white p-6 rounded-2xl shadow-sm hover:shadow-md border border-slate-100 transition-all">
+                        <div className="bg-emerald-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i className="fas fa-plus-circle text-emerald-600 text-xl"></i>
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Әжемнен үйрендім</h3>
+                        <p className="text-slate-600">Өз ата-әжеңізден естіген жаңа сөздерді сандыққа қосыңыз.</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const DictionaryPage = ({ words, onShowToast, favorites, toggleFavorite }) => {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [activeCategory, setActiveCategory] = useState('ALL');
+
+            const filteredWords = useMemo(() => {
+                return words.filter(w => {
+                    const matchSearch = w.word.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                        w.definition.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchCategory = activeCategory === 'ALL' || w.category === activeCategory;
+                    return matchSearch && matchCategory;
+                });
+            }, [words, searchTerm, activeCategory]);
+
+            return (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                        <div className="relative w-full md:w-96">
+                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input 
+                                type="text" 
+                                placeholder="Сөзді немесе мағынасын іздеу..." 
+                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:bg-white transition-all"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                            <button 
+                                onClick={() => setActiveCategory('ALL')} 
+                                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeCategory === 'ALL' ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                Барлығы
+                            </button>
+                            {Object.entries(CATEGORIES).map(([key, cat]) => (
+                                <button 
+                                    key={key}
+                                    onClick={() => setActiveCategory(key)}
+                                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeCategory === key ? cat.color.replace('text-', 'bg-').replace('100', '500') + ' text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                    title={cat.name}
+                                >
+                                    {cat.name.split(' ')[0]}...
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredWords.length > 0 ? (
+                            filteredWords.map(word => (
+                                <WordCard 
+                                    key={word.id} 
+                                    word={word} 
+                                    onShowToast={onShowToast} 
+                                    isFavorite={favorites.includes(word.id)}
+                                    toggleFavorite={toggleFavorite}
+                                />
+                            ))
+                        ) : (
+                            <div className="col-span-full py-12 text-center text-slate-500">
+                                <div className="text-4xl mb-4">🔍</div>
+                                <p className="text-lg">Сұрауыңыз бойынша ештеңе табылмады.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const AIAssistantPage = ({ words, onShowToast }) => {
+            const [query, setQuery] = useState('');
+            const [chat, setChat] = useState([
+                { role: 'ai', text: 'Сәлеметсіз бе! Мен «Сөз зерттеушісімін». Маған көне сөзді жазыңыз, мен ол туралы толық мәлімет беремін.' }
+            ]);
+            const chatEndRef = useRef(null);
+
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [chat]);
+
+            const handleSend = () => {
+                if (!query.trim()) return;
+                
+                const userMsg = { role: 'user', text: query };
+                setChat(prev => [...prev, userMsg]);
+                setQuery('');
+                
+                setTimeout(() => {
+                    const searchWord = userMsg.text.toLowerCase().trim();
+                    const wordInfo = words.find(w => w.word.toLowerCase() === searchWord);
+                    
+                    let aiResponse = "";
+                    if (wordInfo) {
+                        aiResponse = `**Бұл қандай бұйым?**\nБұл — ${wordInfo.definition}\n\n` +
+                                     `**Ол не үшін пайдаланылған?**\nТұрмыста бұл зат кеңінен қолданылған. Мысалы: "${wordInfo.example}"\n\n` +
+                                     `**Оны қай санатқа жатқызуға болады?**\nБұл "${CATEGORIES[wordInfo.category].name}" санатына жатады.\n\n` +
+                                     `**Қазіргі замандағы ұқсас түрі:**\nҚазіргі заманда бұған ұқсас заманауи баламалары бар, бірақ дәл осындай ұлттық нақыштағы түрі сирек кездеседі.\n\n` +
+                                     `**Нақтылауды қажет ететін тұстары:**\nҚосымша өңірлік мағыналары болуы мүмкін. Егер сіздің өңірде басқаша аталса, "Әжемнен үйрендім" бөліміне қосыңыз!`;
+                    } else {
+                        aiResponse = `Кешіріңіз, «${userMsg.text}» сөзі менің ресми дерекқорымда жоқ. Бұл сөздің мағынасы немесе өңірлік қолданысы қосымша тексеруді қажет етеді. Бәлкім, сіз оны "Әжемнен үйрендім" бөлімі арқылы зерттеу материалдарына қосарсыз?`;
+                    }
+                    
+                    setChat(prev => [...prev, { role: 'ai', text: aiResponse }]);
+                }, 800);
+            };
+
+            const renderTextWithFormatting = (text) => {
+                return text.split('\n').map((line, i) => {
+                    if (line.startsWith('**') && line.endsWith('**')) {
+                        return <strong key={i} className="block mt-2 mb-1 text-cyan-900">{line.replace(/\*\*/g, '')}</strong>;
+                    }
+                    return <React.Fragment key={i}>{line}<br/></React.Fragment>;
+                });
+            };
+
+            return (
+                <div className="max-w-3xl mx-auto h-[600px] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-fade-in">
+                    <div className="bg-cyan-700 text-white p-4 flex items-center">
+                        <i className="fas fa-robot text-2xl mr-3"></i>
+                        <div>
+                            <h2 className="font-bold text-lg">Сөз зерттеуші ЖИ</h2>
+                            <p className="text-cyan-200 text-xs">Дерекқор негізінде жұмыс істейді</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50">
+                        {chat.map((msg, idx) => (
+                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-cyan-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
+                                    <div className="text-sm leading-relaxed">
+                                        {renderTextWithFormatting(msg.text)}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={chatEndRef} />
+                    </div>
+                    
+                    <div className="p-4 bg-white border-t border-slate-100">
+                        <div className="flex space-x-2">
+                            <input 
+                                type="text" 
+                                className="flex-1 bg-slate-100 border-none rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                placeholder="Сөзді жазыңыз (мысалы: Кебеже...)"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            />
+                            <button 
+                                onClick={handleSend}
+                                className="bg-cyan-600 hover:bg-cyan-700 text-white p-3 px-4 rounded-xl transition-colors"
+                            >
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GameModes = [
+            { id: 1, title: "Мағынасын тап", desc: "Сөз беріледі, дұрыс анықтамасын табыңыз." },
+            { id: 2, title: "Суретті тап", desc: "Белгіше бойынша сөзді табыңыз." },
+            { id: 3, title: "Санатты тап", desc: "Сөздің қай топқа жататынын анықтаңыз." },
+            { id: 4, title: "Сұрақ-жауап", desc: "Анықтама беріледі, дұрыс сөзді табыңыз." }
+        ];
+
+        const GamesPage = ({ words }) => {
+            const [activeMode, setActiveMode] = useState(null);
+            const [questions, setQuestions] = useState([]);
+            const [currentQIdx, setCurrentQIdx] = useState(0);
+            const [score, setScore] = useState(0);
+            const [isGameOver, setIsGameOver] = useState(false);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [wrongWords, setWrongWords] = useState([]);
+
+            const startGame = (modeId) => {
+                setActiveMode(modeId);
+                let qs = [];
+                const shuffledWords = shuffleArray(words).slice(0, 10); 
+                
+                shuffledWords.forEach(correctWord => {
+                    let options = [];
+                    let questionText = "";
+                    let correctAnswer = "";
+                    
+                    const wrongOptions = shuffleArray(words.filter(w => w.id !== correctWord.id)).slice(0, 3);
+                    
+                    switch(modeId) {
+                        case 1:
+                            questionText = `«${correctWord.word}» сөзінің мағынасы қандай?`;
+                            correctAnswer = correctWord.definition;
+                            options = shuffleArray([correctWord.definition, ...wrongOptions.map(w => w.definition)]);
+                            break;
+                        case 2:
+                            questionText = `Бұл сурет (белгіше) қай сөзге сәйкес келеді? ${correctWord.icon}`;
+                            correctAnswer = correctWord.word;
+                            options = shuffleArray([correctWord.word, ...wrongOptions.map(w => w.word)]);
+                            break;
+                        case 3:
+                            questionText = `«${correctWord.word}» қай санатқа жатады?`;
+                            correctAnswer = CATEGORIES[correctWord.category].name;
+                            options = shuffleArray(Object.values(CATEGORIES).map(c => c.name));
+                            break;
+                        case 4:
+                            questionText = `Бұл не? "${correctWord.definition}"`;
+                            correctAnswer = correctWord.word;
+                            options = shuffleArray([correctWord.word, ...wrongOptions.map(w => w.word)]);
+                            break;
+                    }
+                    
+                    qs.push({
+                        wordObj: correctWord,
+                        question: questionText,
+                        options: options,
+                        correctAnswer: correctAnswer
+                    });
+                });
+                
+                setQuestions(qs);
+                setCurrentQIdx(0);
+                setScore(0);
+                setIsGameOver(false);
+                setSelectedAnswer(null);
+                setWrongWords([]);
+            };
+
+            const handleAnswer = (ans) => {
+                if (selectedAnswer !== null) return;
+                setSelectedAnswer(ans);
+                
+                const isCorrect = ans === questions[currentQIdx].correctAnswer;
+                if (isCorrect) {
+                    setScore(prev => prev + 1);
+                } else {
+                    setWrongWords(prev => [...prev, questions[currentQIdx].wordObj]);
+                }
+                
+                setTimeout(() => {
+                    if (currentQIdx + 1 < questions.length) {
+                        setCurrentQIdx(prev => prev + 1);
+                        setSelectedAnswer(null);
+                    } else {
+                        setIsGameOver(true);
+                    }
+                }, 1500); 
+            };
+
+            if (!activeMode) {
+                return (
+                    <div className="animate-fade-in">
+                        <h2 className="text-3xl font-bold text-cyan-900 mb-8 text-center">Көне сөзді тап!</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                            {GameModes.map(mode => (
+                                <div key={mode.id} onClick={() => startGame(mode.id)} className="bg-white p-8 rounded-2xl shadow-sm border border-amber-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group text-center">
+                                    <div className="bg-amber-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                        <i className="fas fa-gamepad text-amber-600 text-3xl"></i>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">{mode.title}</h3>
+                                    <p className="text-slate-600">{mode.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (isGameOver) {
+                const percent = Math.round((score / questions.length) * 100);
+                return (
+                    <div className="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center animate-fade-in">
+                        <i className="fas fa-trophy text-amber-500 text-6xl mb-4"></i>
+                        <h2 className="text-3xl font-bold text-cyan-900 mb-2">Ойын аяқталды!</h2>
+                        <p className="text-xl text-slate-600 mb-6">Сіздің нәтижеңіз: {score} / {questions.length} ({percent}%)</p>
+                        
+                        {wrongWords.length > 0 && (
+                            <div className="mb-8 text-left bg-rose-50 p-4 rounded-xl border border-rose-100">
+                                <h3 className="font-bold text-rose-800 mb-2 flex items-center">
+                                    <i className="fas fa-info-circle mr-2"></i> Қайталау қажет сөздер:
+                                </h3>
+                                <ul className="list-disc list-inside space-y-1 text-sm text-rose-900">
+                                    {[...new Set(wrongWords)].map(w => (
+                                        <li key={w.id}><strong>{w.word}</strong> — {w.definition}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        
+                        <div className="flex justify-center space-x-4">
+                            <button onClick={() => startGame(activeMode)} className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center">
+                                <i className="fas fa-sync-alt mr-2"></i> Қайта ойнау
+                            </button>
+                            <button onClick={() => setActiveMode(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-6 py-3 rounded-xl transition-colors">
+                                Басқа ойын таңдау
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            const currentQ = questions[currentQIdx];
+
+            return (
+                <div className="max-w-3xl mx-auto bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-slate-100 animate-fade-in">
+                    <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+                        <span className="text-slate-500 font-medium">Сұрақ {currentQIdx + 1} / {questions.length}</span>
+                        <span className="bg-amber-100 text-amber-800 px-4 py-1 rounded-full font-bold">Ұпай: {score}</span>
+                    </div>
+                    
+                    <h2 className="text-2xl md:text-3xl font-bold text-cyan-900 mb-10 text-center leading-relaxed">
+                        {currentQ.question}
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {currentQ.options.map((opt, idx) => {
+                            let btnClass = "bg-slate-50 border-slate-200 hover:bg-cyan-50 hover:border-cyan-300 text-slate-700";
+                            
+                            if (selectedAnswer) {
+                                if (opt === currentQ.correctAnswer) {
+                                    btnClass = "bg-emerald-100 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500";
+                                } else if (opt === selectedAnswer) {
+                                    btnClass = "bg-rose-100 border-rose-500 text-rose-900";
+                                } else {
+                                    btnClass = "bg-slate-50 border-slate-200 opacity-50";
+                                }
+                            }
+                            
+                            return (
+                                <button
+                                    key={idx}
+                                    disabled={selectedAnswer !== null}
+                                    onClick={() => handleAnswer(opt)}
+                                    className={`p-4 rounded-xl border-2 text-left font-medium transition-all ${btnClass}`}
+                                >
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    
+                    {selectedAnswer && (
+                        <div className={`mt-8 p-4 rounded-xl text-center font-bold ${selectedAnswer === currentQ.correctAnswer ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'} animate-fade-in`}>
+                            {selectedAnswer === currentQ.correctAnswer ? 'Дұрыс!' : `Қате! Дұрыс жауабы: ${currentQ.correctAnswer}`}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const ResearchPage = ({ customWords, setCustomWords, onShowToast }) => {
+            const [formData, setFormData] = useState({
+                word: '', meaning: '', region: '', source: '', example: ''
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.word || !formData.meaning) {
+                    onShowToast("Сөз атауы мен мағынасын міндетті түрде толтырыңыз!", "error");
+                    return;
+                }
+                
+                const newWord = {
+                    ...formData,
+                    id: 'custom_' + generateId(),
+                    dateAdded: new Date().toISOString(),
+                    status: 'Тексерілмеген'
+                };
+                
+                const updated = [newWord, ...customWords];
+                setCustomWords(updated);
+                try {
+                    localStorage.setItem('ajemnin_sozdik_custom', JSON.stringify(updated));
+                } catch(e) {}
+                
+                onShowToast("Жаңа сөз сәтті сақталды!", "success");
+                setFormData({ word: '', meaning: '', region: '', source: '', example: '' });
+            };
+
+            const handleExport = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(customWords));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "zertteu_sozder.json");
+                document.body.appendChild(downloadAnchorNode); 
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                onShowToast("Деректер экспортталды", "success");
+            };
+
+            return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in">
+                    <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-emerald-100">
+                        <h2 className="text-2xl font-bold text-emerald-900 mb-2 flex items-center">
+                            <i className="fas fa-plus-circle mr-2"></i> Жаңа сөз қосу
+                        </h2>
+                        <p className="text-slate-500 mb-6 text-sm">Ата-әжеңізден немесе отбасыңыздан естіген көне сөзді осы жерге жазып, зерттеу қорын толықтырыңыз.</p>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Сөз атауы *</label>
+                                <input required type="text" className="w-full border border-slate-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" value={formData.word} onChange={e => setFormData({...formData, word: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Сөздің мағынасы *</label>
+                                <textarea required rows="3" className="w-full border border-slate-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" value={formData.meaning} onChange={e => setFormData({...formData, meaning: e.target.value})}></textarea>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Қай өңірде?</label>
+                                    <input type="text" placeholder="Мысалы: Батыс Қазақстан" className="w-full border border-slate-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Кімнен?</label>
+                                    <input type="text" placeholder="Мысалы: Апамнан" className="w-full border border-slate-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" value={formData.source} onChange={e => setFormData({...formData, source: e.target.value})} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Мысал</label>
+                                <input type="text" className="w-full border border-slate-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" value={formData.example} onChange={e => setFormData({...formData, example: e.target.value})} />
+                            </div>
+                            
+                            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors">
+                                Сандыққа салу
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-slate-800">Зерттеу материалдары</h2>
+                            <button onClick={handleExport} disabled={customWords.length===0} className="flex items-center text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg disabled:opacity-50">
+                                <i className="fas fa-download mr-1"></i> Экспорт
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[500px]">
+                            {customWords.length > 0 ? (
+                                customWords.map(cw => (
+                                    <div key={cw.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-bold text-lg text-emerald-900">{cw.word}</h3>
+                                            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full font-medium">{cw.status}</span>
+                                        </div>
+                                        <p className="text-sm text-slate-700 mb-2">{cw.meaning}</p>
+                                        <div className="text-xs text-slate-500 grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200">
+                                            <p><span className="font-semibold text-slate-600">Өңір:</span> {cw.region || '-'}</p>
+                                            <p><span className="font-semibold text-slate-600">Дереккөз:</span> {cw.source || '-'}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center text-slate-400 py-10 flex flex-col items-center">
+                                    <i className="fas fa-book-open text-5xl mb-4 opacity-20"></i>
+                                    <p>Әзірге ешқандай сөз қосылмады.<br/>Зерттеуіңізді бастаңыз!</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AboutPage = () => (
+            <div className="max-w-4xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-slate-100 animate-fade-in space-y-8 text-slate-700">
+                <h1 className="text-3xl font-bold text-cyan-900 text-center mb-10">«Әжемнің сөз сандығы» ғылыми жобасы туралы</h1>
+                
+                <section>
+                    <h2 className="text-xl font-bold text-amber-700 mb-3 border-b border-amber-100 pb-2">Жобаның өзектілігі</h2>
+                    <p className="leading-relaxed">Жаһандану заманында қазақтың дәстүрлі тұрмыс-тіршілігіне қатысты көптеген сөздер ұмытылып барады. Жас ұрпақ өз ата-бабаларының қолданған бұйымдарының атауларын білмейді. Бұл тілдік қана емес, мәдени мұраның да жоғалуына әкеледі.</p>
+                </section>
+
+                <section>
+                    <h2 className="text-xl font-bold text-amber-700 mb-3 border-b border-amber-100 pb-2">Жобаның мақсаты мен міндеттері</h2>
+                    <p className="mb-2"><strong>Мақсаты:</strong> Қазақ тіліндегі көне тұрмыстық сөздерді жинақтау және оларды заманауи цифрлық технологиялар арқылы сақтау.</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>Сөздік деректерді жинау және жүйелеу;</li>
+                        <li>Жастарға қызықты болу үшін ойын элементтерін қосу;</li>
+                        <li>Аудио дыбыстау мүмкіндігін енгізу;</li>
+                        <li>Пайдаланушыларға өз зерттеулерін қосуға мүмкіндік беру.</li>
+                    </ul>
+                </section>
+                
+                <section>
+                    <h2 className="text-xl font-bold text-amber-700 mb-3 border-b border-amber-100 pb-2">Ғылыми жаңалығы</h2>
+                    <p>Жобаның басты жаңалығы — оқушылар жинаған фольклорлық-этнографиялық сөздерді қарапайым қағаз бетінде емес, ұлттық мұрағат форматындағы <strong>интерактивті веб-платформада</strong> біріктіру.</p>
+                </section>
+            </div>
+        );
+
+        const App = () => {
+            const [currentView, setCurrentView] = useState('home');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [favorites, setFavorites] = useState([]);
+            const [customWords, setCustomWords] = useState([]);
+            const [toast, setToast] = useState(null);
+
+            useEffect(() => {
+                try {
+                    const savedFavs = localStorage.getItem('ajemnin_sozdik_favs');
+                    if (savedFavs) setFavorites(JSON.parse(savedFavs));
+                    
+                    const savedCustom = localStorage.getItem('ajemnin_sozdik_custom');
+                    if (savedCustom) setCustomWords(JSON.parse(savedCustom));
+                } catch(e) {}
+            }, []);
+
+            const toggleFavorite = (id) => {
+                let newFavs;
+                if (favorites.includes(id)) {
+                    newFavs = favorites.filter(fId => fId !== id);
+                } else {
+                    newFavs = [...favorites, id];
+                }
+                setFavorites(newFavs);
+                try { localStorage.setItem('ajemnin_sozdik_favs', JSON.stringify(newFavs)); } catch(e) {}
+            };
+
+            const showToast = (message, type) => {
+                setToast({ message, type });
+            };
+
+            const navItems = [
+                { id: 'home', label: 'Басты бет', icon: 'fa-home' },
+                { id: 'dictionary', label: 'Сөздік', icon: 'fa-book-open' },
+                { id: 'ai', label: 'ЖИ Көмекші', icon: 'fa-robot' },
+                { id: 'games', label: 'Ойындар', icon: 'fa-gamepad' },
+                { id: 'research', label: 'Зерттеу', icon: 'fa-plus-circle' },
+                { id: 'about', label: 'Жоба туралы', icon: 'fa-info-circle' }
+            ];
+
+            return (
+                <div className="min-h-screen text-slate-800 selection:bg-amber-200 flex flex-col">
+                    <nav className="bg-white border-b border-amber-100 sticky top-0 z-40 shadow-sm">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between h-16">
+                                <div className="flex items-center cursor-pointer" onClick={() => setCurrentView('home')}>
+                                    <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white font-bold mr-3 shadow-md">Ә</div>
+                                    <span className="font-bold text-xl text-cyan-900 hidden sm:block">Әжемнің сөз сандығы</span>
+                                </div>
+                                
+                                <div className="hidden md:flex space-x-1 items-center">
+                                    {navItems.map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setCurrentView(item.id)}
+                                            className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center transition-colors ${currentView === item.id ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600 hover:bg-slate-50 hover:text-cyan-600'}`}
+                                        >
+                                            <i className={`fas ${item.icon} mr-1.5`}></i>
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex items-center md:hidden">
+                                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-slate-600 p-2 text-xl">
+                                        <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {isMenuOpen && (
+                            <div className="md:hidden bg-white border-b border-slate-100 absolute w-full shadow-lg">
+                                <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                                    {navItems.map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => { setCurrentView(item.id); setIsMenuOpen(false); }}
+                                            className={`w-full text-left px-3 py-3 rounded-md text-base font-medium flex items-center ${currentView === item.id ? 'bg-cyan-50 text-cyan-700' : 'text-slate-600'}`}
+                                        >
+                                            <i className={`fas ${item.icon} mr-3 w-5 text-center`}></i>
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </nav>
+
+                    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {currentView === 'home' && <HomePage navigate={setCurrentView} totalWords={WORDS_DATA.length} />}
+                        {currentView === 'dictionary' && <DictionaryPage words={WORDS_DATA} onShowToast={showToast} favorites={favorites} toggleFavorite={toggleFavorite} />}
+                        {currentView === 'ai' && <AIAssistantPage words={WORDS_DATA} onShowToast={showToast} />}
+                        {currentView === 'games' && <GamesPage words={WORDS_DATA} />}
+                        {currentView === 'research' && <ResearchPage customWords={customWords} setCustomWords={setCustomWords} onShowToast={showToast} />}
+                        {currentView === 'about' && <AboutPage />}
+                    </main>
+
+                    <footer className="bg-white border-t border-slate-200 py-6 mt-auto text-center text-slate-500 text-sm">
+                        <p>«Әжемнің сөз сандығы» — Ұлттық мұраны цифрландыру жобасы &copy; {new Date().getFullYear()}</p>
+                    </footer>
+
+                    {toast && (
+                        <Toast 
+                            message={toast.message} 
+                            type={toast.type} 
+                            onClose={() => setToast(null)} 
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
